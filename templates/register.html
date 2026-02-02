@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cadastro</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <div class="login-box">
+            <h1>Criar Conta</h1>
+            <p class="subtitle">Preencha os dados abaixo</p>
+            
+            <!-- Mensagens Flash -->
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    {% for category, message in messages %}
+                        <div class="alert alert-{{ category }}">
+                            {{ message }}
+                        </div>
+                    {% endfor %}
+                {% endif %}
+            {% endwith %}
+            
+            <form class="login-form" method="POST" action="{{ url_for('register') }}">
+                <div class="input-group">
+                    <label for="username">Nome de usuário</label>
+                    <input type="text" id="username" name="username" placeholder="Seu nome" required>
+                </div>
+                
+                <div class="input-group">
+                    <label for="email">Email</label>
+                    <input type="email" id="email" name="email" placeholder="seu@email.com" required>
+                </div>
+                
+                <div class="input-group">
+                    <label for="password">Senha</label>
+                    <input type="password" id="password" name="password" placeholder="Crie uma senha" required>
+                </div>
+                
+                <div class="input-group">
+                    <label for="confirm_password">Confirmar senha</label>
+                    <input type="password" id="confirm_password" name="confirm_password" placeholder="Confirme sua senha" required>
+                </div>
+                
+                <button type="submit" class="btn-login">Cadastrar</button>
+            </form>
+            
+            <div class="signup-link">
+                <p>Já tem uma conta? <a href="{{ url_for('login') }}">Faça login</a></p>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

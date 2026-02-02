@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard Financeiro</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <div class="expenses-container">
+        <!-- Header -->
+        <div class="expenses-header">
+            <h1>📊 Dashboard Financeiro</h1>
+            <div class="header-actions">
+                <select id="yearSelect" onchange="changeYear()" class="year-select">
+                    {% for i in range(5) %}
+                    <option value="{{ current_year - 4 + i }}" {% if selected_year == current_year - 4 + i %}selected{% endif %}>
+                        {{ current_year - 4 + i }}
+                    </option>
+                    {% endfor %}
+                </select>
+                <a href="{{ url_for('dashboard') }}" class="btn-back">← Voltar</a>
+            </div>
+        </div>
+
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ category }}">
+                        {{ message }}
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        <!-- Cards de Resumo Anual -->
+        <div class="summary-cards dashboard-summary">
+            <div class="summary-card total-income">
+                <h3>💵 Receitas {{ selected_year }}</h3>
+                <p class="amount">R$ {{ "%.2f"|format(total_incomes) }}</p>
+            </div>
+            
+            <div class="summary-card total">
+                <h3>💰 Gastos {{ selected_year }}</h3>
+                <p class="amount">R$ {{ "%.2f"|format(total_expenses) }}</p>
+            </div>
+            
+            <div class="summary-card balance {% if total_balance >= 0 %}positive{% else %}negative{% endif %}">
+                <h3>📈 Saldo {{ selected_year }}</h3>
+                <p class="amount">R$ {{ "%.2f"|format(total_balance) }}</p>
+            </div>
+        </div>
+
+        <!-- Gráfico Mensal -->
+        <div class="chart-section">
+            <h2>Visão Mensal - {{ selected_year }}</h2>
+            <div class="chart-container">
+                <canvas id="monthlyChart"></canvas>
+            </div>
+        </div>
+
+        <!-- Tabela Mensal -->
+        <div class="expenses-list">
+            <h2>Detalhamento Mensal</h2>
+            <div class="monthly-table">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Mês</th>
+                            <th>Receitas</th>
+                            <th>Gastos</th>
+                            <th>Saldo</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for month in monthly_data %}
+                        <tr>
+                            <td><strong>{{ month.month_name }}</strong></td>
+                            <td class="income-value">R$ {{ "%.2f"|format(month.incomes) }}</td>
+                            <td class="expense-value">R$ {{ "%.2f"|format(month.expenses) }}</td>
+                            <td class="{% if month.balance >= 0 %}positive-value{% else %}negative-value{% endif %}">
+                                R$ {{ "%.2f"|format(month.balance) }}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Gráficos de Pizza -->
+        <div class="pie-charts-section">
+            <div class="chart-section">
+                <h2>Gastos por Categoria</h2>
+                <div class="chart-container-small">
+                    <canvas id="expensePieChart"></canvas>
+                </div>
+            </div>
+            
+            <div class="chart-section">
+                <h2>Receitas por Categoria</h2>
+                <div class="chart-container-small">
+                    <canvas id="incomePieChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- Gráfico de Comparação Anual -->
+        <div class="chart-section">
+            <h2>Comparação Anual (Últimos 5 Anos)</h2>
+            <div class="chart-container">
+                <canvas id="yearlyChart"></canvas>
+            </div>
+        </div>
+
+        <!-- Tabela Anual -->
+        <div class="expenses-list">
+            <h2>Detalhamento Anual</h2>
+            <div class="monthly-table">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Ano</th>
+                            <th>Receitas</th>
+                            <th>Gastos</th>
+                            <th>Saldo</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for year in yearly_data %}
+                        <tr>
+                            <td><strong>{{ year.year }}</strong></td>
+                            <td class="income-value">R$ {{ "%.2f"|format(year.incomes) }}</td>
+                            <td class="expense-value">R$ {{ "%.2f"|format(year.expenses) }}</td>
+                            <td class="{% if year.balance >= 0 %}positive-value{% else %}negative-value{% endif %}">
+                                R$ {{ "%.2f"|format(year.balance) }}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Dados do backend
+        const monthlyData = {{ monthly_data | tojson }};
+        const yearlyData = {{ yearly_data | tojson }};
+        const expenseCategories = {{ expense_categories | tojson }};
+        const incomeCategories = {{ income_categories | tojson }};
+
+        // Configuração de cores
+        const colors = {
+            income: '#10b981',
+            expense: '#ef4444',
+            balance: '#667eea'
+        };
+
+        // Gráfico Mensal
+        const monthlyCtx = document.getElementById('monthlyChart').getContext('2d');
+        new Chart(monthlyCtx, {
+            type: 'bar',
+            data: {
+                labels: monthlyData.map(m => m.month_name),
+                datasets: [
+                    {
+                        label: 'Receitas',
+                        data: monthlyData.map(m => m.incomes),
+                        backgroundColor: colors.income,
+                        borderRadius: 5
+                    },
+                    {
+                        label: 'Gastos',
+                        data: monthlyData.map(m => m.expenses),
+                        backgroundColor: colors.expense,
+                        borderRadius: 5
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: true,
+                plugins: {
+                    legend: {
+                        position: 'top',
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                return context.dataset.label + ': R$ ' + context.parsed.y.toFixed(2);
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: {
+                            callback: function(value) {
+                                return 'R$ ' + value.toFixed(0);
+                            }
+                        }
+                    }
+                }
+            }
+        });
+
+        // Gráfico de Pizza - Gastos
+        if (Object.keys(expenseCategories).length > 0) {
+            const expensePieCtx = document.getElementById('expensePieChart').getContext('2d');
+            new Chart(expensePieCtx, {
+                type: 'doughnut',
+                data: {
+                    labels: Object.keys(expenseCategories),
+                    datasets: [{
+                        data: Object.values(expenseCategories),
+                        backgroundColor: [
+                            '#ef4444', '#f59e0b', '#10b981', '#3b82f6', 
+                            '#8b5cf6', '#ec4899', '#14b8a6', '#f97316'
+                        ]
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    plugins: {
+                        legend: {
+                            position: 'bottom'
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    return context.label + ': R$ ' + context.parsed.toFixed(2);
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        // Gráfico de Pizza - Receitas
+        if (Object.keys(incomeCategories).length > 0) {
+            const incomePieCtx = document.getElementById('incomePieChart').getContext('2d');
+            new Chart(incomePieCtx, {
+                type: 'doughnut',
+                data: {
+                    labels: Object.keys(incomeCategories),
+                    datasets: [{
+                        data: Object.values(incomeCategories),
+                        backgroundColor: [
+                            '#10b981', '#14b8a6', '#06b6d4', '#0ea5e9',
+                            '#3b82f6', '#6366f1', '#8b5cf6', '#a855f7'
+                        ]
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    plugins: {
+                        legend: {
+                            position: 'bottom'
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    return context.label + ': R$ ' + context.parsed.toFixed(2);
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        // Gráfico Anual
+        const yearlyCtx = document.getElementById('yearlyChart').getContext('2d');
+        new Chart(yearlyCtx, {
+            type: 'line',
+            data: {
+                labels: yearlyData.map(y => y.year),
+                datasets: [
+                    {
+                        label: 'Receitas',
+                        data: yearlyData.map(y => y.incomes),
+                        borderColor: colors.income,
+                        backgroundColor: colors.income + '33',
+                        tension: 0.3,
+                        fill: true
+                    },
+                    {
+                        label: 'Gastos',
+                        data: yearlyData.map(y => y.expenses),
+                        borderColor: colors.expense,
+                        backgroundColor: colors.expense + '33',
+                        tension: 0.3,
+                        fill: true
+                    },
+                    {
+                        label: 'Saldo',
+                        data: yearlyData.map(y => y.balance),
+                        borderColor: colors.balance,
+                        backgroundColor: colors.balance + '33',
+                        tension: 0.3,
+                        fill: true
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: true,
+                plugins: {
+                    legend: {
+                        position: 'top',
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                return context.dataset.label + ': R$ ' + context.parsed.y.toFixed(2);
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    y: {
+                        ticks: {
+                            callback: function(value) {
+                                return 'R$ ' + value.toFixed(0);
+                            }
+                        }
+                    }
+                }
+            }
+        });
+
+        // Função para trocar de ano
+        function changeYear() {
+            const year = document.getElementById('yearSelect').value;
+            window.location.href = '/financial-dashboard?year=' + year;
+        }
+    </script>
+</body>
+</html>

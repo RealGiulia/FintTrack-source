@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Minhas Receitas</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="expenses-container">
+        <!-- Header -->
+        <div class="expenses-header">
+            <h1>💵 Controle de Receitas</h1>
+            <a href="{{ url_for('dashboard') }}" class="btn-back">← Voltar</a>
+        </div>
+
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ category }}">
+                        {{ message }}
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        <!-- Resumo -->
+        <div class="summary-cards">
+            <div class="summary-card total-income">
+                <h3>Total de Receitas</h3>
+                <p class="amount">R$ {{ "%.2f"|format(total) }}</p>
+            </div>
+            
+            <div class="summary-card count">
+                <h3>Quantidade</h3>
+                <p class="amount">{{ incomes|length }}</p>
+                <p class="label">receitas registradas</p>
+            </div>
+        </div>
+
+        <!-- Receitas por Categoria -->
+        {% if categories %}
+        <div class="categories-section">
+            <h2>Receitas por Categoria</h2>
+            <div class="category-grid">
+                {% for category, amount in categories.items() %}
+                <div class="category-card income-category">
+                    <span class="category-name">{{ category }}</span>
+                    <span class="category-amount">R$ {{ "%.2f"|format(amount) }}</span>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Formulário de Adicionar Receita -->
+        <div class="add-expense-form">
+            <h2>Adicionar Nova Receita</h2>
+            <form method="POST" action="{{ url_for('add_income') }}">
+                <div class="form-row">
+                    <div class="input-group">
+                        <label for="description">Descrição</label>
+                        <input type="text" id="description" name="description" placeholder="Ex: Salário do mês" required>
+                    </div>
+                    
+                    <div class="input-group">
+                        <label for="amount">Valor (R$)</label>
+                        <input type="number" id="amount" name="amount" step="0.01" min="0.01" placeholder="0.00" required>
+                    </div>
+                </div>
+                
+                <div class="form-row">
+                    <div class="input-group">
+                        <label for="category">Categoria</label>
+                        <select id="category" name="category" required>
+                            <option value="">Selecione...</option>
+                            <option value="Salário">💼 Salário</option>
+                            <option value="Freelance">💻 Freelance</option>
+                            <option value="Investimentos">📈 Investimentos</option>
+                            <option value="Aluguel">🏠 Aluguel</option>
+                            <option value="Vendas">🛍️ Vendas</option>
+                            <option value="Bônus">🎁 Bônus</option>
+                            <option value="Presente">🎉 Presente</option>
+                            <option value="Outros">📦 Outros</option>
+                        </select>
+                    </div>
+                    
+                    <div class="input-group">
+                        <label for="date">Data</label>
+                        <input type="date" id="date" name="date" required>
+                    </div>
+                </div>
+                
+                <button type="submit" class="btn-add">+ Adicionar Receita</button>
+            </form>
+        </div>
+
+        <!-- Lista de Receitas -->
+        <div class="expenses-list">
+            <h2>Histórico de Receitas</h2>
+            
+            {% if incomes %}
+                <div class="expenses-table">
+                    {% for income in incomes %}
+                    <div class="expense-item income-item">
+                        <div class="expense-info">
+                            <div class="expense-main">
+                                <span class="expense-description">{{ income.description }}</span>
+                                <span class="expense-category income-cat">{{ income.category }}</span>
+                            </div>
+                            <div class="expense-date">{{ income.date.strftime('%d/%m/%Y') }}</div>
+                        </div>
+                        
+                        <div class="expense-actions">
+                            <span class="expense-amount income-amount">R$ {{ "%.2f"|format(income.amount) }}</span>
+                            <button class="btn-edit" onclick="editIncome({{ income.id }}, '{{ income.description }}', {{ income.amount }}, '{{ income.category }}', '{{ income.date }}')">✏️</button>
+                            <a href="{{ url_for('delete_income', id=income.id) }}" class="btn-delete" onclick="return confirm('Tem certeza que deseja deletar esta receita?')">🗑️</a>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <div class="empty-state">
+                    <p>📝 Nenhuma receita registrada ainda.</p>
+                    <p>Comece adicionando sua primeira receita acima!</p>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Modal de Edição -->
+    <div id="editModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeModal()">&times;</span>
+            <h2>Editar Receita</h2>
+            <form id="editForm" method="POST">
+                <div class="input-group">
+                    <label for="edit_description">Descrição</label>
+                    <input type="text" id="edit_description" name="description" required>
+                </div>
+                
+                <div class="input-group">
+                    <label for="edit_amount">Valor (R$)</label>
+                    <input type="number" id="edit_amount" name="amount" step="0.01" required>
+                </div>
+                
+                <div class="input-group">
+                    <label for="edit_category">Categoria</label>
+                    <select id="edit_category" name="category" required>
+                        <option value="Salário">💼 Salário</option>
+                        <option value="Freelance">💻 Freelance</option>
+                        <option value="Investimentos">📈 Investimentos</option>
+                        <option value="Aluguel">🏠 Aluguel</option>
+                        <option value="Vendas">🛍️ Vendas</option>
+                        <option value="Bônus">🎁 Bônus</option>
+                        <option value="Presente">🎉 Presente</option>
+                        <option value="Outros">📦 Outros</option>
+                    </select>
+                </div>
+                
+                <div class="input-group">
+                    <label for="edit_date">Data</label>
+                    <input type="date" id="edit_date" name="date" required>
+                </div>
+                
+                <button type="submit" class="btn-add">Salvar Alterações</button>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        // Definir data de hoje como padrão
+        document.getElementById('date').valueAsDate = new Date();
+
+        function editIncome(id, description, amount, category, date) {
+            document.getElementById('editModal').style.display = 'block';
+            document.getElementById('editForm').action = '/incomes/edit/' + id;
+            document.getElementById('edit_description').value = description;
+            document.getElementById('edit_amount').value = amount;
+            document.getElementById('edit_category').value = category;
+            document.getElementById('edit_date').value = date;
+        }
+
+        function closeModal() {
+            document.getElementById('editModal').style.display = 'none';
+        }
+
+        // Fechar modal ao clicar fora
+        window.onclick = function(event) {
+            var modal = document.getElementById('editModal');
+            if (event.target == modal) {
+                modal.style.display = 'none';
+            }
+        }
+    </script>
+</body>
+</html>

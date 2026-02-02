@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <div class="login-box" style="max-width: 600px;">
+            <h1>Dashboard</h1>
+            <p class="subtitle">Bem-vindo, {{ username }}!</p>
+            
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    {% for category, message in messages %}
+                        <div class="alert alert-{{ category }}">
+                            {{ message }}
+                        </div>
+                    {% endfor %}
+                {% endif %}
+            {% endwith %}
+            
+            <div class="dashboard-content">
+                <p>Gerencie suas finanças de forma simples e eficiente!</p>
+                
+                <div class="dashboard-links">
+                    <a href="{{ url_for('financial_dashboard') }}" class="dashboard-link">
+                        <h3>📊 Dashboard Financeiro</h3>
+                        <p>Visão completa mensal e anual</p>
+                    </a>
+                    
+                    <a href="{{ url_for('incomes') }}" class="dashboard-link">
+                        <h3>💵 Minhas Receitas</h3>
+                        <p>Registre suas entradas de dinheiro</p>
+                    </a>
+                    
+                    <a href="{{ url_for('expenses') }}" class="dashboard-link">
+                        <h3>💰 Meus Gastos</h3>
+                        <p>Registre e acompanhe suas despesas</p>
+                    </a>
+                </div>
+            </div>
+            
+            <a href="{{ url_for('logout') }}" class="btn-logout">Sair</a>
+        </div>
+    </div>
+</body>
+</html>
